@@ -7,12 +7,14 @@ const getDataFromEndpoint = async function (deviceId) {
   const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/status/${deviceId}`
   console.log(url)
   try {
-      await fetch(url).then(res => console.log(res.json()));
+      await fetch(url, {
+        method : "POST"
+      }).then(res => console.log(res.json()));
   } catch (err) {
-    console.log(err)
+    console.log(err.message)
   }
   console.log("Finished")
-  return a;
+  return;
 };
 const handleCarChargingFunction = function (toCharge) {
   // (TODO) Send to API call for both conditions
