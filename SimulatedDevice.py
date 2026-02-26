@@ -86,16 +86,14 @@ class SimulatedCarDeviceIOT(Device):
         
 class CLI:
 
-    async def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
+    def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
         print("======================================")
         print(f"Car: {name}")
         print(f"Battery Percentage: {batteryPercentage}")
         print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
-        print("======================================")
         print()
-        print("Options: Charge/Uncharge/Shutdown")
-        res = await asyncio.to_thread(input, "Enter Input: ")
-        await aQueue.put(("user_input", res))
+        print("Device Online")
+        print("======================================")
         return
 
 async def main():
@@ -130,34 +128,3 @@ async def main():
     print("=========Completed========")
 
 asyncio.run(main())
-
-# def main():
-#     scd = SimulatedCarDevice("Car1", 0, False, 0.1)
-#     scd.start()
-#     time.sleep(10)
-#     scd.stop()
-#     time.sleep(10)
-# main()
-# async def main():
-#     aQueue = asyncio.Queue()
-#     async def dispatcherLoop():
-#         while True:
-#             eventType, data = await aQueue.get()
-#             print(f"Got event: {eventType} and data {data}")
-
-#     async def timer(seconds):
-#         await asyncio.sleep(seconds)
-#         await aQueue.put(("timer", f"{seconds} have passed"))
-
-#     async def cliLoop():
-#         while True:
-#             res = await asyncio.to_thread(input, "Enter your input: ")
-#             print(f"You wrote {res}")
-#             await aQueue.put(("user_input", res))
-#             asyncio.create_task(timer(5))
-
-
-
-#     await asyncio.gather(dispatcherLoop(), cliLoop())
-
-# asyncio.run(main())
