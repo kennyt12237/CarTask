@@ -33,12 +33,32 @@ const getDataFromEndpoint = async function (deviceID) {
   return;
 };
 
+const deviceOperation = async function (deviceID, toCharge, isotime) {
+  // const url = `http://localhost:7071/api/device/${deviceID}`;
+  const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/${deviceID}`;
+  const body = {
+    toCharge: toCharge,
+    time: isotime,
+  };
+  console.log("Body: ", body)
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    const js = await res.json();
+    console.log(js);
+  } catch (err) {
+    console.log(err.message);
+  }
+  return;
+};
 const handleCarChargingFunction = function (toCharge) {
   // (TODO) Send to API call for both conditions
   if (toCharge) {
-    alert("Charging...");
+    deviceOperation("SimulatedDevice", true, "2024-04-04");
   } else {
-    alert("Chargin Stopped.");
+    deviceOperation("SimulatedDevice", false, "2024-04-04");
   }
   return toCharge;
 };

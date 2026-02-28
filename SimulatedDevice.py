@@ -107,7 +107,7 @@ class CLI:
         return
 
 async def main():
-    scd = SimulatedCarDeviceIOT(name = "DRC Car", batteryPrct = 0, chargeRate = 0.1)
+    scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
     symKey = os.getenv("IOTHUB_SYMMETRIC_KEY")
     hostname = "Kenny-IoT-Hub-For-Task.azure-devices.net"
     device = "SimulatedDevice"
@@ -119,9 +119,9 @@ async def main():
     async def device_method_handler(method_request : MethodRequest):
         payload_dict : dict[str,str] = method_request.payload
         if method_request.name == "handleChargingSwitch":
-            if payload_dict["toCharge"].lower() == "true":
+            if payload_dict["toCharge"] == True:
                 res = await scd.start()
-            elif payload_dict["toCharge"].lower() == "false":
+            elif payload_dict["toCharge"] == False:
                 res = await scd.stop()
         res_payload = {
             "message" : "Received Message"

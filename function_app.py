@@ -50,7 +50,7 @@ def chargeDevice(req: func.HttpRequest) -> func.HttpResponse:
         toCharge = req_body.get('toCharge')
         time = req_body.get('time')
 
-    if toCharge and time:
+    if toCharge != None and time != None:
         payload = {"command" : "chargeOperation",
                    "toCharge" : toCharge,
                    "dateTime" : time,
