@@ -1,8 +1,12 @@
 import os
 import asyncio
 from azure.iot.device.aio import IoTHubDeviceClient
+from azure.iot.device import MethodResponse, MethodRequest
 from abc import abstractmethod
 from typing import Callable
+import json
+import signal
+import sys
 
 aQueue = asyncio.Queue()
 
@@ -31,6 +35,7 @@ class Device:
         self.isCharging : bool = isCharging
         self.chargeRate : float = chargeRate
         self.timer = Timer(name, 5, self.__defaultCallback)
+        self.task = None
 
     async def __defaultCallback(self, timePassed):
         await self.templateUpdate(timePassed)
@@ -49,16 +54,21 @@ class Device:
         self.batteryPrct = self.batteryPrct + timePassed * self.chargeRate
         return self.batteryPrct
 
-    def start(self) -> bool:
+    async def start(self) -> bool:
         self.isCharging = True
-        asyncio.create_task(self.timer.start())
+        self.task = asyncio.create_task(self.timer.start())
         return True
     
-    def stop(self) -> bool:
+    async def stop(self) -> bool:
         self.isCharging = False
         self.timer.stop()
-        return False
+        self.task.cancel()
 
+        try:
+            await self.task
+        except asyncio.CancelledError:
+            return True
+        return False
     def getName(self) -> str:
         return self.name
     
@@ -86,16 +96,14 @@ class SimulatedCarDeviceIOT(Device):
         
 class CLI:
 
-    async def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
+    def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
         print("======================================")
         print(f"Car: {name}")
         print(f"Battery Percentage: {batteryPercentage}")
         print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
-        print("======================================")
         print()
-        print("Options: Charge/Uncharge/Shutdown")
-        res = await asyncio.to_thread(input, "Enter Input: ")
-        await aQueue.put(("user_input", res))
+        print("Device Online")
+        print("======================================")
         return
 
 async def main():
@@ -107,57 +115,39 @@ async def main():
     scd.setDeviceClient(deviceClient)
     cli = CLI()
     await deviceClient.connect()
+
+    async def device_method_handler(method_request : MethodRequest):
+        payload_dict : dict[str,str] = method_request.payload
+        if method_request.name == "handleChargingSwitch":
+            if payload_dict["toCharge"].lower() == "true":
+                res = await scd.start()
+            elif payload_dict["toCharge"].lower() == "false":
+                res = await scd.stop()
+        res_payload = {
+            "message" : "Received Message"
+        }
+        method_response = MethodResponse.create_from_method_request(method_request, 200, json.dumps(res_payload))
+        await deviceClient.send_method_response(method_response)
+    
+    deviceClient.on_method_request_received = device_method_handler
     async def dispatcher(aQueue : asyncio.Queue):
         while True:
             event, message = await aQueue.get()
-            print(f"Event: {event}, Message: {message}")
             match event:
-                case "user_input":
-                    match message:
-                        case "Charge":
-                            scd.start()
-                            asyncio.create_task(cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus()))
-                        case "Uncharge":
-                            scd.stop()
-                            asyncio.create_task(cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus()))
-                        case "Shutdown":
-                            break
                 case "device_update":
-                        asyncio.create_task(cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus()))
-    asyncio.create_task(cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus()))
-    await asyncio.gather(dispatcher(aQueue))
-    await  deviceClient.shutdown()
-    print("=========Completed========")
+                        cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+    cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+    dispatcher_task = asyncio.create_task(dispatcher(aQueue))
+
+    try:
+        while True:
+            await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        # dispatcher_task.cancel()
+        # await dispatcher_task
+        await deviceClient.shutdown()
+        print("=========Completed========") 
+        sys.exit(0)
+
 
 asyncio.run(main())
-
-# def main():
-#     scd = SimulatedCarDevice("Car1", 0, False, 0.1)
-#     scd.start()
-#     time.sleep(10)
-#     scd.stop()
-#     time.sleep(10)
-# main()
-# async def main():
-#     aQueue = asyncio.Queue()
-#     async def dispatcherLoop():
-#         while True:
-#             eventType, data = await aQueue.get()
-#             print(f"Got event: {eventType} and data {data}")
-
-#     async def timer(seconds):
-#         await asyncio.sleep(seconds)
-#         await aQueue.put(("timer", f"{seconds} have passed"))
-
-#     async def cliLoop():
-#         while True:
-#             res = await asyncio.to_thread(input, "Enter your input: ")
-#             print(f"You wrote {res}")
-#             await aQueue.put(("user_input", res))
-#             asyncio.create_task(timer(5))
-
-
-
-#     await asyncio.gather(dispatcherLoop(), cliLoop())
-
-# asyncio.run(main())
