@@ -18,7 +18,7 @@ def getDeviceStatus(req: func.HttpRequest) -> func.HttpResponse:
     json_data = {
         "deviceID" : deviceId,
         "status" : "null",
-        "charging" : "no",
+        "charging" : "False",
         "batteryPercentage" : 0,
         "lastConnectivity" : "null",
         "error" : {
@@ -34,7 +34,7 @@ def getDeviceStatus(req: func.HttpRequest) -> func.HttpResponse:
             "message" : e.message
         }
         return func.HttpResponse(json.dumps(json_data), status_code=503)
-    json_data["status"] = "online" if twin.connection_state == True else "offline",
+    json_data["status"] = "online" if twin.connection_state.lower() == "connected" else "offline",
     json_data["lastConnectivity"] = twin.last_activity_time.isoformat(),
     return func.HttpResponse(json.dumps(json_data), status_code=200)
     
