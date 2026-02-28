@@ -1,21 +1,38 @@
 const charge_btn_1 = document.getElementById("cb-charge-btn-1");
+const name_text = document.getElementById("cb-name");
+const battery_percentage_text = document.getElementById(
+  "cb-battery-percentage",
+);
+const charging_status_text = document.getElementById("cb-charging-status");
+const online_status_text = document.getElementById("cb-online-status");
+const last_connectivity_text = document.getElementById("cb-last-connection");
+
 let isCharging = false;
 const START = "Start";
 const STOP = "Stop";
 
-const getDataFromEndpoint = async function (deviceId) {
-  const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/status/${deviceId}`
-  console.log(url)
+const setHTMLDataElements = function (jsonData) {
+  name_text.textContent = jsonData["deviceID"];
+  battery_percentage_text.textContent = jsonData["batteryPercentage"] + "%";
+  charging_status_text.textContent = jsonData["charging"];
+  online_status_text.textContent = jsonData["status"];
+  const date = new Date(jsonData["lastConnectivity"]);
+  last_connectivity_text.textContent = date.toString();
+};
+const getDataFromEndpoint = async function (deviceID) {
+  const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/${deviceID}/status`;
   try {
-      await fetch(url, {
-        method : "POST"
-      }).then(res => console.log(res.json()));
+    const res = await fetch(url, {
+      method: "GET",
+    });
+    const js = await res.json();
+    setHTMLDataElements(js);
   } catch (err) {
-    console.log(err.message)
+    console.log(err.message);
   }
-  console.log("Finished")
   return;
 };
+
 const handleCarChargingFunction = function (toCharge) {
   // (TODO) Send to API call for both conditions
   if (toCharge) {
@@ -46,4 +63,4 @@ charge_btn_1.addEventListener("click", () => {
   onChargeButtonClick(!isCharging);
 });
 
-console.log(getDataFromEndpoint("SimulatedDevice"))
+console.log(getDataFromEndpoint("SimulatedDevice"));
