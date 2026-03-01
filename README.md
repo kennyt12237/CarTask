@@ -13,7 +13,14 @@ The following entities are involved:
 
 
 ## WebApp Requests
-The user pressing the start charging button shows one of the flow from the WebApp to the SimulatedDevice. 
+The user pressing the start charging button shows one of the flows from the WebApp to the SimulatedDevice. 
 
 
 ![Image of Start/Stop charging flow](./images/ChargeRequestFlow.png)
+
+
+## Tools
+The following tools were used:
+- HTML/JavaScript for WebApp
+- Azure IoTHub, Functions, Static Web App for Cloud 
+- Python programming language for implementing Azure Functions and SimulatedDevice CLI
