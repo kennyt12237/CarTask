@@ -5,7 +5,6 @@ from azure.iot.device import MethodResponse, MethodRequest
 from abc import abstractmethod
 from typing import Callable
 import json
-import signal
 import sys
 
 aQueue = asyncio.Queue()
@@ -49,6 +48,7 @@ class Device:
     def hasUpdated(self, timePassed):
         pass
 
+
     # Default linear charge rate
     def _update(self, timePassed) -> float:
         self.batteryPrct = self.batteryPrct + timePassed * self.chargeRate
@@ -57,18 +57,30 @@ class Device:
     async def start(self) -> bool:
         self.isCharging = True
         self.task = asyncio.create_task(self.timer.start())
+        await self.startHook()
         return True
     
+    @abstractmethod
+    async def startHook(self):
+        pass
+
     async def stop(self) -> bool:
         self.isCharging = False
         self.timer.stop()
         self.task.cancel()
 
+        res = False
         try:
             await self.task
         except asyncio.CancelledError:
-            return True
-        return False
+            res = True
+        await self.stopHook()
+        return res
+    
+    @abstractmethod
+    async def stopHook(self):
+        pass
+
     def getName(self) -> str:
         return self.name
     
@@ -89,9 +101,22 @@ class SimulatedCarDeviceIOT(Device):
         self.deviceClient = deviceClient
 
     async def hasUpdated(self, timePassed):
+        # Send Message Async
         async def sendMessageAsync(client : IoTHubDeviceClient, msg : str):
             await client.send_message(msg)
         await asyncio.create_task(sendMessageAsync(self.deviceClient, self.batteryPrct))
+        
+        # Additional Properties
+        async def updateAdditionalProperties(client : IoTHubDeviceClient, reportedProperties : dict):
+            await asyncio.create_task(client.patch_twin_reported_properties(reportedProperties))
+        await asyncio.create_task(updateAdditionalProperties(self.deviceClient, {"batteryPercentage" : self.batteryPrct}))
+
+        await aQueue.put(("device_update", self.batteryPrct))
+
+    async def startHook(self):
+          await aQueue.put(("device_update", self.batteryPrct))
+
+    async def stopHook(self):
         await aQueue.put(("device_update", self.batteryPrct))
         
 class CLI:
