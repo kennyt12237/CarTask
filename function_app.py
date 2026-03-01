@@ -1,6 +1,6 @@
 import azure.functions as func
 from azure.iot.hub import IoTHubRegistryManager
-from azure.iot.hub.protocol.models import CloudToDeviceMethod, CloudToDeviceMethodResult
+from azure.iot.hub.protocol.models import CloudToDeviceMethod, CloudToDeviceMethodResult, TwinProperties
 from msrest.exceptions import HttpOperationError
 import logging
 import os 
@@ -34,8 +34,9 @@ def getDeviceStatus(req: func.HttpRequest) -> func.HttpResponse:
             "message" : e.message
         }
         return func.HttpResponse(json.dumps(json_data), status_code=503)
-    json_data["status"] = "online" if twin.connection_state.lower() == "connected" else "offline",
-    json_data["lastConnectivity"] = twin.last_activity_time.isoformat(),
+    json_data["status"] = "online" if twin.connection_state.lower() == "connected" else "offline"
+    json_data["lastConnectivity"] = twin.last_activity_time.isoformat()
+    json_data["batteryPercentage"] = twin.properties.reported["batteryPercentage"]
     return func.HttpResponse(json.dumps(json_data), status_code=200)
     
 @app.route(route="device/{deviceID}", auth_level=func.AuthLevel.ANONYMOUS, methods=["post"])
