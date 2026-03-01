@@ -1,4 +1,5 @@
-const charge_btn_1 = document.getElementById("cb-charge-btn-1");
+const charge_btn_1 = document.getElementById("cb-charge-btn");
+const refresh_btn_1 = document.getElementById("cb-refresh-btn");
 const name_text = document.getElementById("cb-name");
 const battery_percentage_text = document.getElementById(
   "cb-battery-percentage",
@@ -12,9 +13,10 @@ const START = "Start";
 const STOP = "Stop";
 
 const setHTMLDataElements = function (jsonData) {
+  console.log(jsonData)
   name_text.textContent = jsonData["deviceID"];
   battery_percentage_text.textContent = jsonData["batteryPercentage"] + "%";
-  charging_status_text.textContent = jsonData["charging"];
+  charging_status_text.textContent = jsonData["charging"] == "False" ? "Off" : "On";
   online_status_text.textContent = jsonData["status"];
   const date = new Date(jsonData["lastConnectivity"]);
   last_connectivity_text.textContent = date.toString();
@@ -34,33 +36,38 @@ const getDataFromEndpoint = async function (deviceID) {
 };
 
 const deviceOperation = async function (deviceID, toCharge, isotime) {
-  // const url = `http://localhost:7071/api/device/${deviceID}`;
   const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/${deviceID}`;
   const body = {
     toCharge: toCharge,
     time: isotime,
   };
-  console.log("Body: ", body)
   try {
     const res = await fetch(url, {
       method: "POST",
       body: JSON.stringify(body),
     });
-    const js = await res.json();
-    console.log(js);
+    console.log(res)
   } catch (err) {
     console.log(err.message);
+    return false;
   }
-  return;
+  return true;
 };
-const handleCarChargingFunction = function (toCharge) {
-  // (TODO) Send to API call for both conditions
+const handleCarChargingFunction = async function (toCharge) {
+  var res;
   if (toCharge) {
-    deviceOperation("SimulatedDevice", true, "2024-04-04");
+    res = await deviceOperation("SimulatedDevice", true, "2024-04-04");
+    if (res == false) {
+      alert("Error with starting the device")
+    }
   } else {
-    deviceOperation("SimulatedDevice", false, "2024-04-04");
+    res = await deviceOperation("SimulatedDevice", false, "2024-04-04");
+    if (res == false) {
+      alert("Error with stopping the device")
+    }
+
   }
-  return toCharge;
+  return res;
 };
 
 const handleCarChargingHTMLState = function (nextState) {
@@ -71,16 +78,22 @@ const handleCarChargingHTMLState = function (nextState) {
   }
 };
 
-const onChargeButtonClick = function (toStartCharge) {
-  handleCarChargingFunction(toStartCharge);
-  handleCarChargingHTMLState(toStartCharge);
-  isCharging = toStartCharge;
-  //   console.log("IsCharging:", isCharging);
+const onChargeButtonClick = async function (toStartCharge) {
+  const res = await handleCarChargingFunction(toStartCharge);
+  if (res == true) {
+    handleCarChargingHTMLState(toStartCharge);
+    isCharging = toStartCharge;
+  }
 };
 
-document;
-charge_btn_1.addEventListener("click", () => {
-  onChargeButtonClick(!isCharging);
+const onRefreshButtonClick = async function () {
+   await getDataFromEndpoint("SimulatedDevice")
+}
+
+charge_btn_1.addEventListener("click", async () => {
+  await onChargeButtonClick(!isCharging);
 });
 
-console.log(getDataFromEndpoint("SimulatedDevice"));
+refresh_btn_1.addEventListener("click", async () => {
+  await onRefreshButtonClick()
+})
