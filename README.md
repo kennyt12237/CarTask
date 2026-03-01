@@ -10,3 +10,10 @@ The following entities are involved:
 
 
 ![Image of entities and interaction](./images/Diagram.png)
+
+
+## WebApp Requests
+The user pressing the start charging button shows one of the flow from the WebApp to the SimulatedDevice. 
+
+
+![Image of Start/Stop charging flow](./images/ChargeRequestFlow.png)
