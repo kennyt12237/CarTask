@@ -21,7 +21,7 @@ const setHTMLDataElements = function (jsonData) {
   battery_percentage_text.textContent = jsonData["batteryPercentage"] + "%";
 
   // Charging Status
-  charging_status_text.textContent = jsonData["charging"] == "False" ? "Off" : "On";
+  charging_status_text.textContent = jsonData["charging"];
 
   // Online info
   online_status_text.textContent = jsonData["status"];
