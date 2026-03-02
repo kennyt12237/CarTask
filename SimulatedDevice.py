@@ -133,10 +133,8 @@ class CLI:
 
 async def main():
     scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
-    symKey = os.getenv("IOTHUB_SYMMETRIC_KEY")
-    hostname = "Kenny-IoT-Hub-For-Task.azure-devices.net"
-    device = "SimulatedDevice"
-    deviceClient = IoTHubDeviceClient.create_from_symmetric_key(symKey,hostname, device)
+    connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
+    deviceClient = IoTHubDeviceClient.create_from_connection_string(connection_string)
     scd.setDeviceClient(deviceClient)
     cli = CLI()
     await deviceClient.connect()
