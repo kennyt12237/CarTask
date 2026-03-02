@@ -1,0 +1,13 @@
+.git*
+.vscode
+__azurite_db*__.json
+__blobstorage__
+__queuestorage__
+local.settings.json
+test
+.venv
+app.html
+c2rough.py
+connection.py
+SimulatedDevice.py
+script.js
