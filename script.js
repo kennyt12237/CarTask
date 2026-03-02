@@ -22,6 +22,8 @@ const setHTMLDataElements = function (jsonData) {
 
   // Charging Status
   charging_status_text.textContent = jsonData["charging"];
+  isCharging = jsonData["charging"] == "on" ? true : false;
+  handleCarChargingHTMLState(isCharging)
 
   // Online info
   online_status_text.textContent = jsonData["status"];
@@ -29,19 +31,28 @@ const setHTMLDataElements = function (jsonData) {
   const date = new Date(jsonData["lastConnectivity"]);
   last_connectivity_text.textContent = date.toString();
 };
+
 const getDataFromEndpoint = async function (deviceID) {
   const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/${deviceID}/status`;
+  let js = null
   try {
     const res = await fetch(url, {
       method: "GET",
     });
-    const js = await res.json();
-    setHTMLDataElements(js);
+    js = await res.json();
   } catch (err) {
     console.log(err.message);
   }
-  return;
+  return js;
 };
+
+
+const getDataFromEndpointAndSetHTML = async function (deviceID) {
+  const jsonData = await getDataFromEndpoint(deviceID)
+  if (jsonData != null) {
+    setHTMLDataElements(jsonData)
+  }
+}
 
 const deviceOperation = async function (deviceID, toCharge, isotime) {
   const url = `https://kennys-function-app-for-task-hcg5fmbag3gqgnfe.australiaeast-01.azurewebsites.net/api/device/${deviceID}`;
@@ -71,13 +82,13 @@ const handleCarChargingFunction = async function (deviceID, toCharge) {
   if (toCharge) {
     res = await deviceOperation("SimulatedDevice", true, "2024-04-04");
     if (res == false) {
-      getDataFromEndpoint(deviceID)
+      getDataFromEndpointAndSetHTML(deviceID)
       alert("Error with starting the device")
     }
   } else {
     res = await deviceOperation("SimulatedDevice", false, "2024-04-04");
     if (res == false) {
-      getDataFromEndpoint(deviceID)
+      getDataFromEndpointAndSetHTML(deviceID)
       alert("Error with stopping the device")
     }
   }
@@ -107,12 +118,11 @@ const onChargeButtonClick = async function (deviceID, toStartCharge) {
 const onRefreshButtonClick = async function () {
    refresh_btn_1.textContent = "Refreshing...";
    refresh_btn_1.disabled = true;
-   await getDataFromEndpoint("SimulatedDevice")
+   await getDataFromEndpointAndSetHTML("SimulatedDevice")
    refresh_btn_1.textContent = "Refresh";
    refresh_btn_1.disabled = false;
    if (online_status_text.textContent == "online") {
       charge_btn_1.disabled = false;
-      isCharging = false
    } else {
     charge_btn_1.disabled = true;
    }
