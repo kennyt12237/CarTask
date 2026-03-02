@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Callable
 import json
 import sys
+import click
 
 aQueue = asyncio.Queue()
 
@@ -132,14 +133,16 @@ class CLI:
         print("======================================")
         return
 
-async def main():
+async def main(reset):
     scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
     connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
     deviceClient = IoTHubDeviceClient.create_from_connection_string(connection_string)
     scd.setDeviceClient(deviceClient)
-    cli = CLI()
     await deviceClient.connect()
 
+    if reset == True:
+        print("Resetting...")
+    cli = CLI()
     async def device_method_handler(method_request : MethodRequest):
         payload_dict : dict[str,str] = method_request.payload
         if method_request.name == "handleChargingSwitch":
@@ -173,5 +176,10 @@ async def main():
         print("=========Completed========") 
         sys.exit(0)
 
+@click.command()
+@click.option('--reset', '-r', default=False, help="Reset battery Percentage")
+def execute(reset):
+    asyncio.run(main(reset))
 
-asyncio.run(main())
+if __name__ == '__main__':
+    execute()
