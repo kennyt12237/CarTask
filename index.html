@@ -12,24 +12,25 @@
                 <span> Battery Percentage: </span>
                 <span id="cb-battery-percentage"> Not Available </span> 
             </div>
-            <div> 
+            <div>
                 <span> Charging Status: </span> 
                 <span  id="cb-charging-status">  Not Available </span> 
             </div>
             <br>
             <div> 
-                <span> Device: </span> 
+                <span> Device: </span>
                 <span  id="cb-online-status">  Not Available </span> 
+                <span id="cb-online-status-condition" style="color: red;"></span>
             </div>
             <div>
                 <span> Last Connected: </span>
             <span id="cb-last-connection"> Not Available </span>
         </div>
-        <div></div>
-        <button id="cb-charge-btn" value=false> Start </button>
+        <div>
+        <button id="cb-charge-btn" disabled="true"> Start </button>
         <button id="cb-refresh-btn"> Refresh </button>
         <!-- (TODO) Set Optional Changing time -->
-
+        </div>
         <script src="script.js"></script>
     </body>
 </html>
