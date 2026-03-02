@@ -98,8 +98,10 @@ const handleCarChargingFunction = async function (deviceID, toCharge) {
 const handleCarChargingHTMLState = function (nextState) {
   if (nextState) {
     charge_btn_1.textContent = STOP;
+    charging_status_text.textContent = "on";
   } else {
     charge_btn_1.textContent = START;
+    charging_status_text.textContent = "off";
   }
 };
 
