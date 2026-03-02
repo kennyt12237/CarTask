@@ -41,18 +41,21 @@ class Device:
 
     # Template Method
     async def templateUpdate(self, timePassed):
-        self._update(timePassed)
-        await self.hasUpdated(timePassed)
+        changedBP = self._update(timePassed)
+        await self.hasUpdated(changedBP)
 
     @abstractmethod
     def hasUpdated(self, timePassed):
         pass
 
-
     # Default linear charge rate
     def _update(self, timePassed) -> float:
-        self.batteryPrct = self.batteryPrct + timePassed * self.chargeRate
-        return self.batteryPrct
+        changedBP = False
+        if (self.batteryPrct < 100):
+            nextPercentage = self.batteryPrct + (timePassed * self.chargeRate)
+            self.batteryPrct = min(100, nextPercentage)
+            changedBP = True 
+        return changedBP
 
     async def start(self) -> bool:
         self.isCharging = True
@@ -100,23 +103,21 @@ class SimulatedCarDeviceIOT(Device):
     def setDeviceClient(self, deviceClient : IoTHubDeviceClient):
         self.deviceClient = deviceClient
 
-    async def hasUpdated(self, timePassed):
-        # Send Message Async
-        async def sendMessageAsync(client : IoTHubDeviceClient, msg : str):
-            await client.send_message(msg)
-        await asyncio.create_task(sendMessageAsync(self.deviceClient, self.batteryPrct))
-        
-        # Additional Properties
-        async def updateAdditionalProperties(client : IoTHubDeviceClient, reportedProperties : dict):
-            await asyncio.create_task(client.patch_twin_reported_properties(reportedProperties))
-        await asyncio.create_task(updateAdditionalProperties(self.deviceClient, {"batteryPercentage" : self.batteryPrct}))
+    async def __updateAdditionalProperties(self, client : IoTHubDeviceClient, reportedProperties : dict):
+        await asyncio.create_task(client.patch_twin_reported_properties(reportedProperties))
 
-        await aQueue.put(("device_update", self.batteryPrct))
+    async def hasUpdated(self, changedBP):
+        # Additional Properties
+        if (changedBP and self.isCharging):
+            await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
+            await aQueue.put(("device_update", self.batteryPrct))
 
     async def startHook(self):
-          await aQueue.put(("device_update", self.batteryPrct))
+        await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
+        await aQueue.put(("device_update", self.batteryPrct))
 
     async def stopHook(self):
+        await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
         await aQueue.put(("device_update", self.batteryPrct))
         
 class CLI:
@@ -124,7 +125,7 @@ class CLI:
     def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
         print("======================================")
         print(f"Car: {name}")
-        print(f"Battery Percentage: {batteryPercentage}")
+        print(f"Battery Percentage: {batteryPercentage}%")
         print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
         print()
         print("Device Online")
