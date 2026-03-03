@@ -45,6 +45,9 @@ class Device:
         changedBP = self._update(timePassed)
         await self.hasUpdated(changedBP)
 
+    def _setBatteryPercentage(self, bp : float):
+        self.batteryPrct = bp
+
     @abstractmethod
     def hasUpdated(self, timePassed):
         pass
@@ -134,14 +137,17 @@ class CLI:
         return
 
 async def main(reset):
-    scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
+
     connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
     deviceClient = IoTHubDeviceClient.create_from_connection_string(connection_string)
-    scd.setDeviceClient(deviceClient)
     await deviceClient.connect()
 
-    if reset == True:
-        print("Resetting...")
+    scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
+    scd.setDeviceClient(deviceClient)
+    if reset == False:
+        deviceTwin = await deviceClient.get_twin()
+        scd._setBatteryPercentage(deviceTwin['reported']["batteryPercentage"])
+
     cli = CLI()
     async def device_method_handler(method_request : MethodRequest):
         payload_dict : dict[str,str] = method_request.payload
