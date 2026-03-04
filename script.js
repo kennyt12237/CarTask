@@ -137,3 +137,80 @@ charge_btn_1.addEventListener("click", async () => {
 refresh_btn_1.addEventListener("click", async () => {
   await onRefreshButtonClick()
 })
+
+const selectHrs = document.getElementById("cb-schedule-select-hr")
+const selectMinutes = document.getElementById("cb-schedule-select-minutes")
+const selectInterval = document.getElementById("cb-schedule-select-interval")
+const scheduleBtn = document.getElementById("cb-schedule-btn")
+const scheduleDayText = document.getElementById("cb-schedule-day-text")
+
+// Scheduling
+const hrArr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+const minArr = ['00', '15', '30', '45']
+const intervalArr = ['am', 'pm']
+
+hrArr.forEach(h => {
+  const optionH = new Option(h.toString(), h)
+  selectHrs.add(optionH)
+})
+minArr.forEach(m => {
+  const optionM = new Option(m.toString(), m)
+  selectMinutes.add(optionM)
+})
+
+intervalArr.forEach(i => {
+  const optionI = new Option(i.toString(), i)
+  selectInterval.add(optionI)
+})
+
+const getTime = function () {
+  const time = new Date()
+  const hrs = time.getHours()
+  const minutes = time.getMinutes()
+  return [hrs,  minutes]
+}
+
+const getScheduledSelectTime = function () {
+  const min = selectMinutes.value;
+  const interval = selectInterval.value;
+  const hr = selectHrs.value == '12' && interval == 'am' ? '00' : selectHrs.value
+  return [hr, min, interval]
+}
+
+const isTommorrow = function () {
+  const [hr, min] = getTime()
+  let [sHr, sMin, sInterval] = getScheduledSelectTime()
+  if (sInterval == 'pm') {
+    sHr += 12;
+  }
+  let isTomorrow = true;
+  if (sHr > hr || (sHr == hr && sMin > min)) {
+    isTomorrow = false;
+  }
+  return isTomorrow
+}
+const changeTodayTomorrowText = function () {
+  let text = "Today"
+  if (isTommorrow() == true) {
+    text = "Tomorrow";
+  }
+  scheduleDayText.textContent = text
+}
+
+selectHrs.addEventListener("change", () => {
+  changeTodayTomorrowText()
+})
+
+selectMinutes.addEventListener("change", () => {
+  changeTodayTomorrowText()
+})
+
+selectInterval.addEventListener("change", () => {
+  changeTodayTomorrowText()
+})
+
+scheduleBtn.addEventListener("click", () => {
+  
+})
+
+console.log(getTime())
