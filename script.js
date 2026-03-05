@@ -165,52 +165,81 @@ intervalArr.forEach(i => {
 
 const getTime = function () {
   const time = new Date()
-  const hrs = time.getHours()
-  const minutes = time.getMinutes()
+  let hrs = time.getHours().toString()
+  if (hrs.length == 1) {
+    hrs = "0" + hrs;
+  }
+  let minutes = time.getMinutes().toString()
+  if (minutes.length == 1) {
+    minutes = "0" + minutes;
+  }
   return [hrs,  minutes]
 }
 
-const getScheduledSelectTime = function () {
+const convertToISOFormat = function (isTomorrow, hour, min) {
+  const date = new Date()
+  if (isTomorrow == true) {
+    date.setDate(date.getDate() + 1)
+  }
+  let dateStr = date.toISOString().split('T')[0]
+  dateStr += 'T';
+  dateStr += hour.toString() + ":" + min.toString() + ":00"
+  return dateStr
+}
+
+const getScheduledSelectTime24HourClock = function () {
   const min = selectMinutes.value;
   const interval = selectInterval.value;
-  const hr = selectHrs.value == '12' && interval == 'am' ? '00' : selectHrs.value
+  let hr = selectHrs.value
+  if (hr == '12' && interval == 'am') {
+    hr = "00";
+  } else if (hr.length == 1) {
+    hr = "0" + hr;
+  }
+  if (hr != '12' && interval == 'pm') {
+    hr = (parseInt(hr) + 12).toString()
+  }
   return [hr, min, interval]
 }
 
 const isTommorrow = function () {
   const [hr, min] = getTime()
-  let [sHr, sMin, sInterval] = getScheduledSelectTime()
-  if (sInterval == 'pm') {
-    sHr += 12;
-  }
+  let [sHr, sMin, _] = getScheduledSelectTime24HourClock()
   let isTomorrow = true;
   if (sHr > hr || (sHr == hr && sMin > min)) {
     isTomorrow = false;
   }
   return isTomorrow
 }
-const changeTodayTomorrowText = function () {
-  let text = "Today"
-  if (isTommorrow() == true) {
-    text = "Tomorrow";
-  }
-  scheduleDayText.textContent = text
+
+const changeTodayTomorrowText = function (dateIsoFormat) {
+  scheduleDayText.textContent = dateIsoFormat
 }
 
 selectHrs.addEventListener("change", () => {
-  changeTodayTomorrowText()
+  const [hr, min, _] = getScheduledSelectTime24HourClock()
+  const tomorrow = isTommorrow()
+  const text = tomorrow == true ? `Tomorrrow` : `Today`;
+  changeTodayTomorrowText(text)
 })
 
 selectMinutes.addEventListener("change", () => {
-  changeTodayTomorrowText()
+  const [hr, min, _] = getScheduledSelectTime24HourClock()
+  const tomorrow = isTommorrow()
+  const text = tomorrow == true ? `Tomorrrow` : `Today`;
+  changeTodayTomorrowText(text)
 })
 
 selectInterval.addEventListener("change", () => {
-  changeTodayTomorrowText()
+  const [hr, min, _] = getScheduledSelectTime24HourClock()
+  const tomorrow = isTommorrow()
+  const text = tomorrow == true ? `Tomorrrow` : `Today`;
+  changeTodayTomorrowText(text)
 })
 
 scheduleBtn.addEventListener("click", () => {
+  const [hr, min, _] = getScheduledSelectTime24HourClock()
+  const tomorrow = isTommorrow()
+  const t = convertToISOFormat(tomorrow, hr, min)
   
 })
-
-console.log(getTime())
