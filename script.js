@@ -80,13 +80,13 @@ const deviceOperation = async function (deviceID, toCharge, isotime) {
 const handleCarChargingFunction = async function (deviceID, toCharge) {
   let res = false;
   if (toCharge) {
-    res = await deviceOperation("SimulatedDevice", true, "2024-04-04");
+    res = await deviceOperation("SimulatedDevice", true, "2000-01-01T00:00:00");
     if (res == false) {
       getDataFromEndpointAndSetHTML(deviceID)
       alert("Error with starting the device")
     }
   } else {
-    res = await deviceOperation("SimulatedDevice", false, "2024-04-04");
+    res = await deviceOperation("SimulatedDevice", false, "2000-01-01T00:00:00");
     if (res == false) {
       getDataFromEndpointAndSetHTML(deviceID)
       alert("Error with stopping the device")
@@ -181,7 +181,10 @@ const convertToISOFormat = function (isTomorrow, hour, min) {
   if (isTomorrow == true) {
     date.setDate(date.getDate() + 1)
   }
-  let dateStr = date.toISOString().split('T')[0]
+  let dateStr = date.getFullYear() + "-";
+  dateStr += date.getMonth() <= 8 ? "0" + (date.getMonth() + 1) : (date.getMonth() + 1)
+  dateStr += "-"
+  dateStr += date.getDay() <= 9 ? "0" + date.getDate() : date.getDate()
   dateStr += 'T';
   dateStr += hour.toString() + ":" + min.toString() + ":00"
   return dateStr
@@ -212,34 +215,35 @@ const isTommorrow = function () {
   return isTomorrow
 }
 
-const changeTodayTomorrowText = function (dateIsoFormat) {
-  scheduleDayText.textContent = dateIsoFormat
+const changeTodayTomorrowText = function (text) {
+  scheduleDayText.textContent = text
 }
 
 selectHrs.addEventListener("change", () => {
-  const [hr, min, _] = getScheduledSelectTime24HourClock()
   const tomorrow = isTommorrow()
   const text = tomorrow == true ? `Tomorrrow` : `Today`;
   changeTodayTomorrowText(text)
 })
 
 selectMinutes.addEventListener("change", () => {
-  const [hr, min, _] = getScheduledSelectTime24HourClock()
   const tomorrow = isTommorrow()
   const text = tomorrow == true ? `Tomorrrow` : `Today`;
   changeTodayTomorrowText(text)
 })
 
 selectInterval.addEventListener("change", () => {
-  const [hr, min, _] = getScheduledSelectTime24HourClock()
   const tomorrow = isTommorrow()
   const text = tomorrow == true ? `Tomorrrow` : `Today`;
   changeTodayTomorrowText(text)
 })
 
-scheduleBtn.addEventListener("click", () => {
+scheduleBtn.addEventListener("click", async () => {
   const [hr, min, _] = getScheduledSelectTime24HourClock()
   const tomorrow = isTommorrow()
   const t = convertToISOFormat(tomorrow, hr, min)
-  
+  const res = await deviceOperation("SimulatedDevice", true, t);
+  if (res == false) {
+    getDataFromEndpointAndSetHTML("SimulatedDevice")
+    alert("Error scheduling the device")
+  }
 })
