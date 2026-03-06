@@ -65,7 +65,7 @@ class Device:
     async def start(self) -> bool:
         self.isCharging = True
         self.task = asyncio.create_task(self.timer.start())
-        await self.startHook()
+        await self._startHook()
         return True
     
     # Does not start scheduling when scheduled time in isoFormat < current time.
@@ -90,7 +90,8 @@ class Device:
     async def stop(self) -> bool:
         self.isCharging = False
         self.timer.stop()
-        self.task.cancel()
+        if (self.task == None):
+            return True
 
         res = False
         try:
@@ -172,21 +173,26 @@ def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
 
 async def main(reset):
 
+    # Device connection
     connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
     deviceClient = IoTHubDeviceClient.create_from_connection_string(connection_string)
     await deviceClient.connect()
 
+    # Initialise object
     scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
     scd.setDeviceClient(deviceClient)
     deviceTwin = await deviceClient.get_twin()
+    
+    # Handle cl args
     if reset == False:
         if "reported" in deviceTwin and "batteryPercentage" in deviceTwin["reported"]:
             scd._setBatteryPercentage(deviceTwin['reported']["batteryPercentage"])
     if "reported" in deviceTwin and "scheduledStart" in deviceTwin["reported"]:
         await scd.scheduledStart(deviceTwin["reported"]["scheduledStart"])
 
-    cli = CLI()
-    async def device_method_handler(method_request : MethodRequest):
+    # Attach handler
+    async def deviceMethodHandler(method_request : MethodRequest):
+        message = "Recieved Message"
         payload_dict : dict[str,str] = method_request.payload
         if method_request.name == "handleChargingSwitch":
             if payload_dict["toCharge"] == True:
@@ -194,17 +200,24 @@ async def main(reset):
                 dateTimeSchIso = payload_dict["dateTime"]
                 if dateTimeSchIso <= dateTimeNowIso:
                     res = await scd.start()
+                    message = "Started charging successfully"
                 else:
                     res = await scd.scheduledStart(dateTimeSchIso)
+                    dt = datetime(dateTimeSchIso)
+                    message = f"Scheduled start at {dt.astimezone()} successfully"
             elif payload_dict["toCharge"] == False:
                 res = await scd.stop()
+                message = "Stopped charging successfully"
+                
         res_payload = {
-            "message" : "Received Message"
+            "message" : message
         }
         method_response = MethodResponse.create_from_method_request(method_request, 200, json.dumps(res_payload))
         await deviceClient.send_method_response(method_response)
+    deviceClient.on_method_request_received = deviceMethodHandler
     
-    deviceClient.on_method_request_received = device_method_handler
+    # Command line and events
+    cli = CLI()
     async def dispatcher(aQueue : asyncio.Queue):
         while True:
             event, message = await aQueue.get()
