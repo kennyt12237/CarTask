@@ -131,31 +131,40 @@ class SimulatedCarDeviceIOT(Device):
         # Additional Properties
         if (changedBP and self.isCharging):
             await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
-            await aQueue.put(("device_update", self.batteryPrct))
+            await aQueue.put(("device_update_charge", self.batteryPrct))
 
     async def _startHook(self):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
-        await aQueue.put(("device_update", self.batteryPrct))
+        await aQueue.put(("device_update_charge", self.batteryPrct))
 
     async def _stopHook(self):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
-        await aQueue.put(("device_update", self.batteryPrct))
+        await aQueue.put(("device_update_main", self.batteryPrct))
     
     async def _scheduledStartHook(self, isoformat : str):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
 
 class CLI:
 
-    def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
-        print("======================================")
-        print(f"Car: {name}")
-        print(f"Battery Percentage: {batteryPercentage}%")
-        print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
-        print()
-        print("Device Online")
-        print("======================================")
+    def printMessage(self, name : str, batteryPercentage : float, chargeStatus : bool, scheduled : str = "None", messageType : str = "main"):
+        if messageType == "main":
+            print("======================================")
+            print(f"{name}")
+            print(f"Battery Percentage: {batteryPercentage}%")
+            print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
+            print()
+            print(f"Scheduled: {scheduled}")
+            print()
+            print("Device Online")
+            print("======================================")
+        if messageType == "charge":
+            print("======================================")
+            print(f"{name}")
+            print(f"Battery Percentage: {batteryPercentage}%")
+            print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
+            print("======================================")
         return
-
+    
 # Must be less than a day, iso2 > iso1
 def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
 
@@ -222,9 +231,12 @@ async def main(reset):
         while True:
             event, message = await aQueue.get()
             match event:
-                case "device_update":
-                        cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
-    cli.printMessageAndWaitForInput(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+                case "device_update_main":
+                        cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+                case "device_update_charge":
+                        cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), messageType="charge")
+
+    cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
     dispatcher_task = asyncio.create_task(dispatcher(aQueue))
 
     try:
