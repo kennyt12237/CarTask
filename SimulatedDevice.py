@@ -1,14 +1,18 @@
-import os
-import asyncio
 from azure.iot.device.aio import IoTHubDeviceClient
 from azure.iot.device import MethodResponse, MethodRequest
+
+import os
+import sys
+import asyncio
+from asyncio import CancelledError
+
 from abc import abstractmethod
 from typing import Callable
 import json
-import sys
-import click
 from datetime import datetime
-from asyncio import CancelledError
+
+import click
+
 
 aQueue = asyncio.Queue()
 
