@@ -8,6 +8,7 @@ import json
 import sys
 import click
 from datetime import datetime
+from asyncio import CancelledError
 
 aQueue = asyncio.Queue()
 
@@ -89,14 +90,14 @@ class Device:
 
     async def stop(self) -> bool:
         self.isCharging = False
-        self.timer.stop()
         if (self.task == None):
             return True
 
         res = False
+        self.task.cancel()
         try:
             await self.task
-        except asyncio.CancelledError:
+        except CancelledError:
             res = True
         await self._stopHook()
         return res
@@ -113,6 +114,9 @@ class Device:
     
     def getChargingStatus(self) -> bool:
         return self.isCharging
+    
+    async def shutdown(self) -> bool:
+        pass
 
 # Simulation of the Car Device
 class SimulatedCarDeviceIOT(Device):
@@ -144,6 +148,10 @@ class SimulatedCarDeviceIOT(Device):
     async def _scheduledStartHook(self, isoformat : str):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
 
+    async def shutdown(self) -> bool:
+        await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : False, "batteryPercentage" : self.batteryPrct}))
+        await aQueue.put(("device_shutdown", "Shutdown"))
+        
 class CLI:
 
     def printMessage(self, name : str, batteryPercentage : float, chargeStatus : bool, scheduled : str = "None", messageType : str = "main"):
@@ -164,6 +172,9 @@ class CLI:
             print(f"Charge Status: {'Charging' if chargeStatus else 'Not Charging'}")
             print("======================================")
         return
+    
+    def printShutdownMessage(self, name : str):
+        print(f"{name} shutting down")
     
 # Must be less than a day, iso2 > iso1
 def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
@@ -235,19 +246,23 @@ async def main(reset):
                         cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
                 case "device_update_charge":
                         cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), messageType="charge")
+                case "device_shutdown":
+                        cli.printShutdownMessage(scd.getName())
 
     cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
     dispatcher_task = asyncio.create_task(dispatcher(aQueue))
-
     try:
         while True:
             await asyncio.sleep(1)
-    except asyncio.CancelledError:
-        # dispatcher_task.cancel()
-        # await dispatcher_task
-        await deviceClient.shutdown()
-        print("=========Completed========") 
-        sys.exit(0)
+    except CancelledError:
+        await scd.shutdown()
+        dispatcher_task.cancel()
+        try:
+            await asyncio.wait_for(dispatcher_task, timeout=4.0)
+        except CancelledError:
+            await deviceClient.shutdown()
+            print("Device Shutdown")
+            sys.exit(0)
 
 @click.command()
 @click.option('--reset', '-r', default=False, help="Reset battery Percentage")
