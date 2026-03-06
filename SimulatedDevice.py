@@ -7,6 +7,7 @@ from typing import Callable
 import json
 import sys
 import click
+from datetime import datetime
 
 aQueue = asyncio.Queue()
 
@@ -67,6 +68,21 @@ class Device:
         await self.startHook()
         return True
     
+    # Does not start scheduling when scheduled time in isoFormat < current time.
+    async def scheduledStart(self, isoFormat : str) -> bool:
+        async def _ss(seconds : int):
+            await asyncio.sleep(seconds)
+            await self.start()
+        seconds = datetimeIsoformatDiffSeconds(datetime.now().isoformat(), isoFormat)
+        if (seconds <= 0):
+            return False
+        asyncio.create_task(_ss(seconds))
+        await self.scheduledStartHook(isoFormat)
+
+    @abstractmethod
+    async def scheduledStartHook(self):
+        pass
+
     @abstractmethod
     async def startHook(self):
         pass
@@ -123,7 +139,10 @@ class SimulatedCarDeviceIOT(Device):
     async def stopHook(self):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
         await aQueue.put(("device_update", self.batteryPrct))
-        
+    
+    async def scheduledStartHook(self, isoformat : str):
+        await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
+
 class CLI:
 
     def printMessageAndWaitForInput(self, name : str, batteryPercentage : float, chargeStatus : bool):
@@ -136,6 +155,21 @@ class CLI:
         print("======================================")
         return
 
+# Must be less than a day, iso2 > iso1
+def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
+
+    iso1d = datetime.fromisoformat(iso1)
+    iso2d = datetime.fromisoformat(iso2)
+    minutes = 0
+    if (iso2d.day > iso1d.day):
+        minutes += (24 - iso1d.hour) * 60
+        minutes -= iso1d.minute
+        minutes += (iso2d.hour * 60) + iso2d.minute
+    else:
+        minutes += (iso2d.hour - iso1d.hour) * 60
+        minutes = (minutes + (iso2d.minute - iso1d.minute)) if iso2d.minute > iso1d.minute else (minutes - (iso1d.minute - iso2d.minute))
+    return minutes * 60
+
 async def main(reset):
 
     connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
@@ -144,16 +178,24 @@ async def main(reset):
 
     scd = SimulatedCarDeviceIOT(name = "SimulatedDevice", batteryPrct = 0, chargeRate = 0.1)
     scd.setDeviceClient(deviceClient)
+    deviceTwin = await deviceClient.get_twin()
     if reset == False:
-        deviceTwin = await deviceClient.get_twin()
-        scd._setBatteryPercentage(deviceTwin['reported']["batteryPercentage"])
+        if "reported" in deviceTwin and "batteryPercentage" in deviceTwin["reported"]:
+            scd._setBatteryPercentage(deviceTwin['reported']["batteryPercentage"])
+    if "reported" in deviceTwin and "scheduledStart" in deviceTwin["reported"]:
+        await scd.scheduledStart(deviceTwin["reported"]["scheduledStart"])
 
     cli = CLI()
     async def device_method_handler(method_request : MethodRequest):
         payload_dict : dict[str,str] = method_request.payload
         if method_request.name == "handleChargingSwitch":
             if payload_dict["toCharge"] == True:
-                res = await scd.start()
+                dateTimeNowIso = datetime.now().isoformat()
+                dateTimeSchIso = payload_dict["dateTime"]
+                if dateTimeSchIso <= dateTimeNowIso:
+                    res = await scd.start()
+                else:
+                    res = await scd.scheduledStart(dateTimeSchIso)
             elif payload_dict["toCharge"] == False:
                 res = await scd.stop()
         res_payload = {
