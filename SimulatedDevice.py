@@ -44,13 +44,13 @@ class Device:
     # Template Method
     async def templateUpdate(self, timePassed):
         changedBP = self._update(timePassed)
-        await self.hasUpdated(changedBP)
+        await self._hasUpdated(changedBP)
 
     def _setBatteryPercentage(self, bp : float):
         self.batteryPrct = bp
 
     @abstractmethod
-    def hasUpdated(self, timePassed):
+    def _hasUpdated(self, timePassed):
         pass
 
     # Default linear charge rate
@@ -77,14 +77,14 @@ class Device:
         if (seconds <= 0):
             return False
         asyncio.create_task(_ss(seconds))
-        await self.scheduledStartHook(isoFormat)
+        await self._scheduledStartHook(isoFormat)
 
     @abstractmethod
-    async def scheduledStartHook(self):
+    async def _scheduledStartHook(self):
         pass
 
     @abstractmethod
-    async def startHook(self):
+    async def _startHook(self):
         pass
 
     async def stop(self) -> bool:
@@ -97,11 +97,11 @@ class Device:
             await self.task
         except asyncio.CancelledError:
             res = True
-        await self.stopHook()
+        await self._stopHook()
         return res
     
     @abstractmethod
-    async def stopHook(self):
+    async def _stopHook(self):
         pass
 
     def getName(self) -> str:
@@ -126,21 +126,21 @@ class SimulatedCarDeviceIOT(Device):
     async def __updateAdditionalProperties(self, client : IoTHubDeviceClient, reportedProperties : dict):
         await asyncio.create_task(client.patch_twin_reported_properties(reportedProperties))
 
-    async def hasUpdated(self, changedBP):
+    async def _hasUpdated(self, changedBP):
         # Additional Properties
         if (changedBP and self.isCharging):
             await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
             await aQueue.put(("device_update", self.batteryPrct))
 
-    async def startHook(self):
+    async def _startHook(self):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
         await aQueue.put(("device_update", self.batteryPrct))
 
-    async def stopHook(self):
+    async def _stopHook(self):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : self.isCharging, "batteryPercentage" : self.batteryPrct}))
         await aQueue.put(("device_update", self.batteryPrct))
     
-    async def scheduledStartHook(self, isoformat : str):
+    async def _scheduledStartHook(self, isoformat : str):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
 
 class CLI:
