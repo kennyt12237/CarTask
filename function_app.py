@@ -2,7 +2,6 @@ import azure.functions as func
 from azure.iot.hub import IoTHubRegistryManager
 from azure.iot.hub.protocol.models import CloudToDeviceMethod, CloudToDeviceMethodResult, TwinProperties
 from msrest.exceptions import HttpOperationError
-import logging
 import os 
 import json
 import datetime
@@ -21,6 +20,7 @@ def getDeviceStatus(req: func.HttpRequest) -> func.HttpResponse:
         "charging" : "False",
         "batteryPercentage" : 0,
         "lastConnectivity" : "null",
+        "scheduledStart" : "null",
         "error" : {
             "code" : "null",
             "message" : "null"
@@ -35,9 +35,13 @@ def getDeviceStatus(req: func.HttpRequest) -> func.HttpResponse:
         }
         return func.HttpResponse(json.dumps(json_data), status_code=503)
     json_data["status"] = "online" if twin.connection_state.lower() == "connected" else "offline"
-    json_data["charging"] = "on" if twin.properties.reported["isCharging"] == True else "off"
+    if "isCharging" in twin.properties.reported:
+        json_data["charging"] = "on" if twin.properties.reported["isCharging"] == True else "off"
+    if "batteryPercentage" in twin.properties.reported:
+        json_data["batteryPercentage"] = twin.properties.reported["batteryPercentage"]
+    if "scheduledStart" in twin.properties.reported:
+        json_data["scheduledStart"] = twin.properties.reported["scheduledStart"]
     json_data["lastConnectivity"] = twin.last_activity_time.isoformat()
-    json_data["batteryPercentage"] = twin.properties.reported["batteryPercentage"]
     return func.HttpResponse(json.dumps(json_data), status_code=200)
     
 @app.route(route="device/{deviceID}", auth_level=func.AuthLevel.ANONYMOUS, methods=["post"])
