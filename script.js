@@ -8,12 +8,15 @@ const charging_status_text = document.getElementById("cb-charging-status");
 const online_status_text = document.getElementById("cb-online-status");
 const online_status_text_condition = document.getElementById("cb-online-status-condition");
 const last_connectivity_text = document.getElementById("cb-last-connection");
+const scheduled_date = document.getElementById("cb-schedule-scheduled-date");
+
 
 let isCharging = false;
 const START = "Start";
 const STOP = "Stop";
 
 const setHTMLDataElements = function (jsonData) {
+  console.log(jsonData)
   // Device name
   name_text.textContent = jsonData["deviceID"];
 
@@ -30,6 +33,8 @@ const setHTMLDataElements = function (jsonData) {
   online_status_text_condition.textContent = jsonData["status"] == "offline" ? "* required to start/stop charging" : "";
   const date = new Date(jsonData["lastConnectivity"]);
   last_connectivity_text.textContent = date.toString();
+
+  scheduled_date.textContent = jsonData["scheduledStart"] == "null" ? "Not set" : new Date(jsonData["scheduledStart"]).toLocaleString()
 };
 
 const getDataFromEndpoint = async function (deviceID) {
