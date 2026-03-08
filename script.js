@@ -16,7 +16,6 @@ const START = "Start";
 const STOP = "Stop";
 
 const setHTMLDataElements = function (jsonData) {
-  console.log(jsonData)
   // Device name
   name_text.textContent = jsonData["deviceID"];
 
@@ -34,7 +33,9 @@ const setHTMLDataElements = function (jsonData) {
   const date = new Date(jsonData["lastConnectivity"]);
   last_connectivity_text.textContent = date.toString();
 
-  scheduled_date.textContent = jsonData["scheduledStart"] == "null" ? "Not set" : new Date(jsonData["scheduledStart"]).toLocaleString()
+  const time = new Date()
+  const isonow = time.toISOString().slice(0,-2)
+  scheduled_date.textContent = isonow > jsonData["scheduledStart"] ? "Not Scheduled" : new Date(jsonData["scheduledStart"]).toLocaleString()
 };
 
 const getDataFromEndpoint = async function (deviceID) {
@@ -123,16 +124,18 @@ const onChargeButtonClick = async function (deviceID, toStartCharge) {
 };
 
 const onRefreshButtonClick = async function () {
-   refresh_btn_1.textContent = "Refreshing...";
-   refresh_btn_1.disabled = true;
-   await getDataFromEndpointAndSetHTML("SimulatedDevice")
-   refresh_btn_1.textContent = "Refresh";
-   refresh_btn_1.disabled = false;
-   if (online_status_text.textContent == "online") {
-      charge_btn_1.disabled = false;
-   } else {
+  refresh_btn_1.textContent = "Refreshing...";
+  refresh_btn_1.disabled = true;
+  await getDataFromEndpointAndSetHTML("SimulatedDevice")
+  refresh_btn_1.textContent = "Refresh";
+  refresh_btn_1.disabled = false;
+  if (online_status_text.textContent == "online") {
+    setScheduledDisabledArea(false)
+    charge_btn_1.disabled = false;
+  } else {
     charge_btn_1.disabled = true;
-   }
+    setScheduledDisabledArea(true)
+  }
 }
 
 charge_btn_1.addEventListener("click", async () => {
@@ -151,7 +154,7 @@ const scheduleDayText = document.getElementById("cb-schedule-day-text")
 
 // Scheduling
 const hrArr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-const minArr = ['00', '15', '30', '45']
+const minArr = ['00', '05', '10', '15', '20', '25', '30', '35', '40','45', '50', '55']
 const intervalArr = ['am', 'pm']
 
 hrArr.forEach(h => {
@@ -247,8 +250,25 @@ scheduleBtn.addEventListener("click", async () => {
   const tomorrow = isTommorrow()
   const t = convertToISOFormat(tomorrow, hr, min)
   const res = await deviceOperation("SimulatedDevice", true, t);
-  if (res == false) {
-    getDataFromEndpointAndSetHTML("SimulatedDevice")
+  if (res) {
+    const time = new Date()
+    const isonow = time.toISOString().slice(0, -2)
+    scheduled_date.textContent = isonow > t ? "Not Scheduled" : new Date(t).toLocaleString()
+  } else {
     alert("Error scheduling the device")
   }
 })
+
+const setScheduledDisabledArea = function (isDisabled) {
+    selectHrs.disabled = isDisabled
+    selectMinutes.disabled = isDisabled
+    selectInterval.disabled = isDisabled
+    scheduleBtn.disabled = isDisabled
+    scheduleDayText.disabled = isDisabled
+}
+
+const init = function() {
+  setScheduledDisabledArea(true)
+}
+
+init()
