@@ -34,8 +34,9 @@ const setHTMLDataElements = function (jsonData) {
   last_connectivity_text.textContent = date.toString();
 
   const time = new Date()
-  const isonow = time.toISOString().slice(0,-2)
-  scheduled_date.textContent = isonow > jsonData["scheduledStart"] ? "Not Scheduled" : new Date(jsonData["scheduledStart"]).toLocaleString()
+  const isonow = time.toISOString()
+  const sTime = new Date(jsonData["scheduledStart"])
+  scheduled_date.textContent = isonow > sTime.toISOString() ? "Not Scheduled" : new Date(jsonData["scheduledStart"]).toLocaleString()
 };
 
 const getDataFromEndpoint = async function (deviceID) {
