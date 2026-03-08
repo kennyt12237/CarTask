@@ -35,6 +35,19 @@ class Timer:
         self.isRunning = False
     
 class Device:
+
+    class ScheduledTask:
+
+        def __init__(self, scheduledTask : asyncio.Task, isoformat : str):
+            self.scheduledTask = scheduledTask
+            self.isoformat = isoformat
+        
+        def getScheduledTask(self) -> asyncio.Task:
+            return self.scheduledTask
+        
+        def getIsoformat(self) -> str:
+            return self.isoformat
+        
     def __init__(self, name : str = 0, batteryPrct: int = 0, chargeRate : float = 1, isCharging : bool = False):
         self.name = name
         self.batteryPrct : float = batteryPrct
@@ -42,7 +55,8 @@ class Device:
         self.chargeRate : float = chargeRate
         self.timer = Timer(name, 5, self.__defaultCallback)
         self.task = None
-
+        self.scheduledTask = None
+    
     async def __defaultCallback(self, timePassed):
         await self.templateUpdate(timePassed)
 
@@ -81,7 +95,10 @@ class Device:
         seconds = datetimeIsoformatDiffSeconds(datetime.now().isoformat(), isoFormat)
         if (seconds <= 0):
             return False
-        asyncio.create_task(_ss(seconds))
+        if self.task != None:
+            self.task.cancel()
+        self.task = asyncio.create_task(_ss(seconds))
+        self.scheduledTask = self.ScheduledTask(self.task, isoFormat)
         await self._scheduledStartHook(isoFormat)
 
     @abstractmethod
@@ -119,6 +136,16 @@ class Device:
     def getChargingStatus(self) -> bool:
         return self.isCharging
     
+    def getScheduledStartLocalTime(self) -> str:
+        if (self.scheduledTask == None):
+            return "None"
+        nowdt = datetime.now()
+        dt = datetime.fromisoformat(self.scheduledTask.getIsoformat())
+        seconds = datetimeIsoformatDiffSeconds(nowdt.isoformat(), dt.isoformat())
+        if (seconds < 0):
+            return "None"
+        return str(dt.date().strftime("%A %d %B %Y")) + " " + str(dt.time())[:-3]
+        
     async def shutdown(self) -> bool:
         pass
 
@@ -151,6 +178,7 @@ class SimulatedCarDeviceIOT(Device):
     
     async def _scheduledStartHook(self, isoformat : str):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
+        await aQueue.put(("device_update_main", self.batteryPrct))
 
     async def shutdown(self) -> bool:
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : False, "batteryPercentage" : self.batteryPrct}))
@@ -193,7 +221,9 @@ def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
     else:
         minutes += (iso2d.hour - iso1d.hour) * 60
         minutes = (minutes + (iso2d.minute - iso1d.minute)) if iso2d.minute > iso1d.minute else (minutes - (iso1d.minute - iso2d.minute))
-    return minutes * 60
+    seconds = minutes * 60
+    seconds -= iso1d.second
+    return seconds
 
 async def main(reset):
 
@@ -227,7 +257,7 @@ async def main(reset):
                     message = "Started charging successfully"
                 else:
                     res = await scd.scheduledStart(dateTimeSchIso)
-                    dt = datetime(dateTimeSchIso)
+                    dt = datetime.fromisoformat(dateTimeSchIso)
                     message = f"Scheduled start at {dt.astimezone()} successfully"
             elif payload_dict["toCharge"] == False:
                 res = await scd.stop()
@@ -247,13 +277,13 @@ async def main(reset):
             event, message = await aQueue.get()
             match event:
                 case "device_update_main":
-                        cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+                        cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), scd.getScheduledStartLocalTime())
                 case "device_update_charge":
                         cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), messageType="charge")
                 case "device_shutdown":
                         cli.printShutdownMessage(scd.getName())
 
-    cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus())
+    cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), scd.getScheduledStartLocalTime())
     dispatcher_task = asyncio.create_task(dispatcher(aQueue))
     try:
         while True:
