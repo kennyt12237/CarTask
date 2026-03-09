@@ -4,9 +4,9 @@
         <title> Car Management </title>
     </head>
 
-    <body>
+    <body style="zoom: 150%; display: flex; flex-direction: column; align-items: center;">
         <h2 id="cb-name"> SimulatedDevice </h2>
-        <div>
+        <div style="width: 250px;">
             <div>
                 <span> Battery Percentage: </span>
                 <span id="cb-battery-percentage"> Not Available </span> 
@@ -19,11 +19,11 @@
             <div> 
                 <span> Device: </span>
                 <span  id="cb-online-status">  Not Available </span> 
-                <span id="cb-online-status-condition" style="color: red;"></span>
+                <span id="cb-online-status-condition" style="color: red; font-size: 8px; vertical-align: super;"></span>
             </div>
             <div>
                 <span> Last Connected: </span>
-            <span id="cb-last-connection"> Not Available </span>
+            <span style="text-wrap: 200;" id="cb-last-connection"> Not Available </span>
         </div>
         <div>
         <button id="cb-charge-btn" disabled="true"> Start </button>
