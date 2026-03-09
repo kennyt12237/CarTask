@@ -85,9 +85,10 @@ class Device:
         return changedBP
 
     async def start(self) -> bool:
-        self.isCharging = True
-        self.task = asyncio.create_task(self.timer.start())
-        await self._startHook()
+        if (self.task == None or self.task.done() == True):
+            self.isCharging = True
+            self.task = asyncio.create_task(self.timer.start())
+            await self._startHook()
         return True
     
     # Does not start scheduling when scheduled time in isoFormat < current time.
@@ -218,7 +219,7 @@ class CLI:
         return
     
     def printShutdownMessage(self, name : str):
-        print(f"{name} shutting down")
+        print(f"{name} turned off")
     
 # Must be less than a day, iso2 > iso1
 def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
