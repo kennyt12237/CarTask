@@ -193,7 +193,7 @@ const convertToISOFormat = function (isTomorrow, hour, min) {
   let dateStr = date.getFullYear() + "-";
   dateStr += date.getMonth() <= 8 ? "0" + (date.getMonth() + 1) : (date.getMonth() + 1)
   dateStr += "-"
-  dateStr += date.getDay() <= 9 ? "0" + date.getDate() : date.getDate()
+  dateStr += date.getDate() <= 9 ? "0" + date.getDate() : date.getDate()
   dateStr += 'T';
   dateStr += hour.toString() + ":" + min.toString() + ":00"
   return dateStr
