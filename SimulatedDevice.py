@@ -4,7 +4,7 @@ from azure.iot.device import MethodResponse, MethodRequest
 import os
 import sys
 import asyncio
-from asyncio import CancelledError
+from asyncio import Task, CancelledError, TimeoutError
 
 from abc import abstractmethod
 from typing import Callable
@@ -28,8 +28,11 @@ class Timer:
     async def start(self):
         self.isRunning = True
         while (self.isRunning):
-            await asyncio.sleep(self.sleepSec)
-            await self.callback(self.sleepSec)
+            try:
+                await asyncio.sleep(self.sleepSec)
+                await self.callback(self.sleepSec)
+            except CancelledError:
+                return
 
     def stop(self):
         self.isRunning = False
@@ -88,18 +91,22 @@ class Device:
         return True
     
     # Does not start scheduling when scheduled time in isoFormat < current time.
-    async def scheduledStart(self, isoFormat : str) -> bool:
+    async def scheduledStart(self, isoFormat : str, hook : bool = True) -> bool:
         async def _ss(seconds : int):
-            await asyncio.sleep(seconds)
-            await self.start()
+            try:
+                await asyncio.sleep(seconds)
+                await self.start()
+            except CancelledError:
+                return
         seconds = datetimeIsoformatDiffSeconds(datetime.now().isoformat(), isoFormat)
         if (seconds <= 0):
             return False
         if self.task != None:
             self.task.cancel()
-        self.task = asyncio.create_task(_ss(seconds))
-        self.scheduledTask = self.ScheduledTask(self.task, isoFormat)
-        await self._scheduledStartHook(isoFormat)
+        self.scheduledTask = self.ScheduledTask(asyncio.create_task(_ss(seconds)), isoFormat)
+        if (hook):
+            await self._scheduledStartHook(isoFormat)
+        return True
 
     @abstractmethod
     async def _scheduledStartHook(self):
@@ -117,8 +124,8 @@ class Device:
         res = False
         self.task.cancel()
         try:
-            await self.task
-        except CancelledError:
+            await asyncio.wait_for(self.task, timeout=4.0)
+        except TimeoutError:
             res = True
         await self._stopHook()
         return res
@@ -147,8 +154,13 @@ class Device:
         return str(dt.date().strftime("%A %d %B %Y")) + " " + str(dt.time())[:-3]
         
     async def shutdown(self) -> bool:
-        pass
+        await self.shutdownHook()
+        return True
 
+    @abstractmethod
+    async def shutdownHook(self) -> bool:
+        pass
+    
 # Simulation of the Car Device
 class SimulatedCarDeviceIOT(Device):
 
@@ -180,7 +192,7 @@ class SimulatedCarDeviceIOT(Device):
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"scheduledStart" : isoformat}))
         await aQueue.put(("device_update_main", self.batteryPrct))
 
-    async def shutdown(self) -> bool:
+    async def shutdownHook(self) -> bool:
         await asyncio.create_task(self.__updateAdditionalProperties(self.deviceClient, {"isCharging" : False, "batteryPercentage" : self.batteryPrct}))
         await aQueue.put(("device_shutdown", "Shutdown"))
         
@@ -242,33 +254,41 @@ async def main(reset):
         if "reported" in deviceTwin and "batteryPercentage" in deviceTwin["reported"]:
             scd._setBatteryPercentage(deviceTwin['reported']["batteryPercentage"])
     if "reported" in deviceTwin and "scheduledStart" in deviceTwin["reported"]:
-        await scd.scheduledStart(deviceTwin["reported"]["scheduledStart"])
+        await scd.scheduledStart(deviceTwin["reported"]["scheduledStart"], hook=False)
 
     # Attach handler
+    mainLoop = asyncio.get_running_loop()
+    def assignDeviceMethodHandlerToMainLoop(method_request : MethodRequest):
+        asyncio.run_coroutine_threadsafe(deviceMethodHandler(method_request), mainLoop)
+        
     async def deviceMethodHandler(method_request : MethodRequest):
         message = "Recieved Message"
-        payload_dict : dict[str,str] = method_request.payload
-        if method_request.name == "handleChargingSwitch":
-            if payload_dict["toCharge"] == True:
-                dateTimeNowIso = datetime.now().isoformat()
-                dateTimeSchIso = payload_dict["dateTime"]
-                if dateTimeSchIso <= dateTimeNowIso:
-                    res = await scd.start()
-                    message = "Started charging successfully"
-                else:
-                    res = await scd.scheduledStart(dateTimeSchIso)
-                    dt = datetime.fromisoformat(dateTimeSchIso)
-                    message = f"Scheduled start at {dt.astimezone()} successfully"
-            elif payload_dict["toCharge"] == False:
-                res = await scd.stop()
-                message = "Stopped charging successfully"
-                
-        res_payload = {
-            "message" : message
-        }
-        method_response = MethodResponse.create_from_method_request(method_request, 200, json.dumps(res_payload))
-        await deviceClient.send_method_response(method_response)
-    deviceClient.on_method_request_received = deviceMethodHandler
+        try:
+            payload_dict : dict[str,str] = method_request.payload
+            if method_request.name == "handleChargingSwitch":
+                if payload_dict["toCharge"] == True:
+                    dateTimeNowIso = datetime.now().isoformat()
+                    dateTimeSchIso = payload_dict["dateTime"]
+                    if dateTimeSchIso <= dateTimeNowIso:
+                        res = await scd.start()
+                        message = "Started charging successfully"
+                    else:
+                        res = await scd.scheduledStart(dateTimeSchIso)
+                        dt = datetime.fromisoformat(dateTimeSchIso)
+                        message = f"Scheduled start at {dt.astimezone()} successfully"
+                elif payload_dict["toCharge"] == False:
+                    res = await scd.stop()
+                    message = "Stopped charging successfully"
+                    
+            res_payload = {
+                "message" : message
+            }
+            method_response = MethodResponse.create_from_method_request(method_request, 200, json.dumps(res_payload))
+            await deviceClient.send_method_response(method_response)
+        except Exception as e:
+            method_response = MethodResponse.create_from_method_request(method_request, 400, json.dumps({"message" : "Internal Error"}))
+            await deviceClient.send_method_response(method_response)
+    deviceClient.on_method_request_received = assignDeviceMethodHandlerToMainLoop
     
     # Command line and events
     cli = CLI()
@@ -290,13 +310,15 @@ async def main(reset):
             await asyncio.sleep(1)
     except CancelledError:
         await scd.shutdown()
-        dispatcher_task.cancel()
+        await deviceClient.disconnect()
         try:
-            await asyncio.wait_for(dispatcher_task, timeout=4.0)
-        except CancelledError:
-            await deviceClient.shutdown()
-            print("Device Shutdown")
+            tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+            for t in tasks:
+                t.cancel()
+            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=4.0)
+        except TimeoutError:
             sys.exit(0)
+        sys.exit(0)
 
 @click.command()
 @click.option('--reset', '-r', default=False, help="Reset battery Percentage")
