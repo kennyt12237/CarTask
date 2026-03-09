@@ -31,7 +31,7 @@ const setHTMLDataElements = function (jsonData) {
   online_status_text.textContent = jsonData["status"];
   online_status_text_condition.textContent = jsonData["status"] == "offline" ? "* required to start/stop charging" : "";
   const date = new Date(jsonData["lastConnectivity"]);
-  last_connectivity_text.textContent = date.toString();
+  last_connectivity_text.textContent = date.toLocaleString();
 
   const time = new Date()
   const isonow = time.toISOString()
