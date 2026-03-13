@@ -4,8 +4,9 @@ A whole simulated car charging demo providing car information and car charging c
 ```
 Running Application
 1. Go to the webapp on a browser: https://proud-grass-05bcea900.6.azurestaticapps.net/
-2. Assign an environment variable: IOTHUB_DEVICE_CONNECTION_STRING = CONNECTION_STRING  # Need to ask me directly for the connection string
-3. Run 'python SimulatedDevice.py' or 'python SimulatedDevice.py -r True' to reset device.
+2. Assign an environment variable: IOTHUB_DEVICE_CONNECTION_STRING = CONNECTION_STRING  # Need to ask me directly for the CONNECTION_STRING
+3. Clone the repository by 'git clone https://github.com/kennyt12237/CarTask.git' in a folder. Then go into the 'CarTask' folder.
+4. Double click 'SimulatedDevice.py'. Alternatively, on the command line run 'python SimulatedDevice.py' or 'python SimulatedDevice.py -r True' to reset the device.
 ```
 
 
