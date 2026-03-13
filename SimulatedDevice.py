@@ -308,6 +308,7 @@ async def main(reset):
                 case "device_shutdown":
                         cli.printShutdownMessage(scd.getName())
 
+    asyncio.create_task(dispatcher(aQueue))
     cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), scd.getScheduledStartLocalTime())
     try:
         while True:
