@@ -221,21 +221,25 @@ class CLI:
     def printShutdownMessage(self, name : str):
         print(f"{name} turned off")
     
-# Must be less than a day, iso2 > iso1
+# For seconds to be positive, iso2 > iso1
 def datetimeIsoformatDiffSeconds(iso1 : str, iso2 : str):
 
     iso1d = datetime.fromisoformat(iso1)
     iso2d = datetime.fromisoformat(iso2)
     minutes = 0
-    if (iso2d.day > iso1d.day):
-        minutes += (24 - iso1d.hour) * 60
+    if (iso2d.day >= iso1d.day):
+        minutes += (iso2d.day - iso1d.day) * 24 * 60
+        
+        minutes -= (iso1d.hour * 60)
         minutes -= iso1d.minute
-        minutes += (iso2d.hour * 60) + iso2d.minute
-    else:
-        minutes += (iso2d.hour - iso1d.hour) * 60
-        minutes = (minutes + (iso2d.minute - iso1d.minute)) if iso2d.minute > iso1d.minute else (minutes - (iso1d.minute - iso2d.minute))
+        
+        minutes += (iso2d.hour * 60)
+        minutes += iso2d.minute
+        
     seconds = minutes * 60
     seconds -= iso1d.second
+
+    seconds -= iso1d.microsecond / 1e6
     return seconds
 
 async def main(reset):
@@ -305,7 +309,6 @@ async def main(reset):
                         cli.printShutdownMessage(scd.getName())
 
     cli.printMessage(scd.getName(), scd.getBatteryPercentage(), scd.getChargingStatus(), scd.getScheduledStartLocalTime())
-    dispatcher_task = asyncio.create_task(dispatcher(aQueue))
     try:
         while True:
             await asyncio.sleep(1)
