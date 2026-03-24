@@ -3,23 +3,23 @@ A whole simulated car charging demo providing car information and car charging c
 
 ```
 Running the Application with setup
-1. Go to the webapp on a browser: https://proud-grass-05bcea900.6.azurestaticapps.net/
-2. Set up environment variable:
-  - Press Windows key
+1. Set up environment variable:
+  - Press the Windows key
   - Type "Edit the system environment variables"
   - Click "Environment Variables"
   - Click the top "New..." button
   - Set Variable name: IOTHUB_DEVICE_CONNECTION_STRING = CONNECTION_STRING  # Need to ask me for the CONNECTION_STRING
 
-3. Clone the repository by 'git clone https://github.com/kennyt12237/CarTask.git' in a folder.
+2. Clone the repository by 'git clone https://github.com/kennyt12237/CarTask.git' in a folder.
    Then go into the 'CarTask' folder.
-4. Running the Simulated Device:
+3. Running the Simulated Device:
    Option 1: Double-click 'SimulatedDevice.exe'. Alternatively, run on the command line 'SimulatedDevice.exe'
               or 'SimulatedDevice.exe -r True' to reset the device.
    Option 2: If Python is installed: Double-click 'SimulatedDevice.py'. Alternatively, run on the command line
             'Python SimulatedDevice.py' or 'Python SimulatedDevice.py -r True' to reset the device.
               or 'SimulatedDevice.exe -r True' to reset the device.
 
+4. Go to the webapp on a browser: https://proud-grass-05bcea900.6.azurestaticapps.net/
 5. Press refresh on the webapp. The device should be online if connected successfully.
    Press start to charge and stop to stop charging.
 
