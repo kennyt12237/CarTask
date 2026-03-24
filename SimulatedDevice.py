@@ -246,6 +246,10 @@ async def main(reset):
 
     # Device connection
     connection_string = os.getenv("IOTHUB_DEVICE_CONNECTION_STRING")
+    if (connection_string == None):
+        print("Error connecting to device! Setup the connection string in environment variable")
+        input("Press Enter to exit...")
+        return
     deviceClient = IoTHubDeviceClient.create_from_connection_string(connection_string)
     await deviceClient.connect()
 
@@ -322,7 +326,9 @@ async def main(reset):
                 t.cancel()
             await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=4.0)
         except TimeoutError:
+            input("Press Enter to exit...")
             sys.exit(0)
+        input("Press Enter to exit...")
         sys.exit(0)
 
 @click.command()
