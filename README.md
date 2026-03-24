@@ -2,7 +2,7 @@
 A whole simulated car charging demo providing car information and car charging capabilities in a webapp, and a simulated car implemented using Python CLI, connected over Azure. 
 
 ```
-Running Application
+Running the Application with setup
 1. Go to the webapp on a browser: https://proud-grass-05bcea900.6.azurestaticapps.net/
 2. Set up environment variable:
   - Press Windows key
