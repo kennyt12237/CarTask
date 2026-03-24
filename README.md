@@ -13,8 +13,13 @@ Running Application
 
 3. Clone the repository by 'git clone https://github.com/kennyt12237/CarTask.git' in a folder.
    Then go into the 'CarTask' folder.
-4. Double-click 'SimulatedDevice.exe'. Alternatively, run on the command line 'SimulatedDevice.exe'
-   or 'SimulatedDevice.exe -r True' to reset the device.
+4. Running the Simulated Device:
+   Option 1: Double-click 'SimulatedDevice.exe'. Alternatively, run on the command line 'SimulatedDevice.exe'
+              or 'SimulatedDevice.exe -r True' to reset the device.
+   Option 2: If Python is installed: Double-click 'SimulatedDevice.py'. Alternatively, run on the command line
+            'Python SimulatedDevice.py' or 'Python SimulatedDevice.py -r True' to reset the device.
+              or 'SimulatedDevice.exe -r True' to reset the device.
+
 5. Press refresh on the webapp. The device should be online if connected successfully.
    Press start to charge and stop to stop charging.
 
